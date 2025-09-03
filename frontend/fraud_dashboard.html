@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud & Bot Detection Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as a real-time monitoring dashboard, which is the most effective structure for visualizing the data from the described backend service. The layout consists of four main components: 1) High-level metric cards for a quick system overview (total events, flagged sessions). 2) A live event feed to show raw data being processed in real-time. 3) A focused "Fraudulent Activity Log" to highlight critical threats. 4) A time-series chart to visualize trends. This structure was chosen to provide a multi-layered view of the system's operation, from a general overview down to specific fraudulent events, making it highly intuitive for an analyst. User interaction is driven by simulation controls that generate various event types, demonstrating the dashboard's reactive nature in a standalone file. -->
+    <!-- Visualization & Content Choices: Report Info: Fraud detection events and scores -> Goal: Monitor system health and identify threats in real-time. Viz/Presentation: A dashboard with KPI cards, data tables, a live log, and a time-series chart. Interaction: Users click simulation buttons to generate events (Normal, Fast Submission, Blacklisted IP, High Frequency) which dynamically update all visual components. Justification: This combination of visualizations provides a comprehensive yet easily digestible view. KPI cards offer at-a-glance metrics. The table is ideal for structured fraud data. The chart reveals trends over time. Library/Method: Tailwind for layout, Chart.js (Canvas) for the time-series chart. CONFIRMATION: NO SVG/Mermaid used, aligning with requirements. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 20rem;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 22rem;
+            }
+        }
+        .log-panel {
+            height: 30rem;
+        }
+        .brand-color-text { color: #4A5568; }
+        .brand-color-bg { background-color: #F7FAFC; }
+        .brand-color-border { border-color: #E2E8F0; }
+        .accent-color-bg { background-color: #DD6B20; }
+        .accent-color-text { color: #DD6B20; }
+        .critical-color-bg { background-color: #E53E3E; }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="brand-color-bg text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-6 lg:p-8">
+        
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold brand-color-text">Fraud & Bot Detection Dashboard</h1>
+            <p class="text-gray-500 mt-1">Real-time monitoring of user activity and threat detection.</p>
+        </header>
+
+        <section id="simulation-controls" class="mb-8 p-4 bg-white rounded-lg shadow-sm border brand-color-border">
+             <h3 class="text-lg font-semibold mb-3 brand-color-text">Event Simulation Controls</h3>
+             <p class="text-sm text-gray-500 mb-4">Click buttons to simulate different types of user events and observe the system's real-time response across all modules below.</p>
+            <div class="flex flex-wrap gap-3">
+                <button onclick="simulateEvent('NORMAL')" class="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transition duration-200">
+                    Generate Normal Event
+                </button>
+                <button onclick="simulateEvent('FAST_SUBMISSION')" class="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-75 transition duration-200">
+                    Simulate Fast Submission
+                </button>
+                <button onclick="simulateEvent('BLACKLISTED_IP')" class="px-4 py-2 accent-color-bg text-white font-semibold rounded-lg shadow-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 transition duration-200">
+                    Simulate Blacklisted IP
+                </button>
+                 <button onclick="simulateEvent('HIGH_FREQUENCY')" class="px-4 py-2 critical-color-bg text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 transition duration-200">
+                    Simulate High-Frequency Burst
+                </button>
+            </div>
+        </section>
+        
+        <section id="metrics" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-sm border brand-color-border">
+                <h4 class="text-gray-500 font-medium">Total Events Processed</h4>
+                <p id="total-events" class="text-4xl font-bold mt-2 brand-color-text">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm border brand-color-border">
+                <h4 class="text-gray-500 font-medium">Sessions Flagged</h4>
+                <p id="sessions-flagged" class="text-4xl font-bold mt-2 critical-color-bg text-white rounded-md px-2 text-center">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm border brand-color-border">
+                <h4 class="text-gray-500 font-medium">Average Fraud Score</h4>
+                <p id="avg-fraud-score" class="text-4xl font-bold mt-2 accent-color-text">0.0</p>
+            </div>
+             <div class="bg-white p-6 rounded-lg shadow-sm border brand-color-border">
+                <h4 class="text-gray-500 font-medium">Events Per Second</h4>
+                <p id="events-per-second" class="text-4xl font-bold mt-2 brand-color-text">0</p>
+            </div>
+        </section>
+
+        <section id="chart" class="mb-8 bg-white p-4 rounded-lg shadow-sm border brand-color-border">
+             <h3 class="text-lg font-semibold mb-4 ml-2 brand-color-text">Event Trend</h3>
+            <div class="chart-container">
+                <canvas id="eventsChart"></canvas>
+            </div>
+        </section>
+
+        <section id="logs" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-4 rounded-lg shadow-sm border brand-color-border">
+                <h3 class="text-lg font-semibold mb-4 brand-color-text">Live Event Feed</h3>
+                <div id="live-feed" class="log-panel overflow-y-auto bg-gray-900 text-white font-mono text-xs rounded-md p-4 space-y-2">
+                    <p class="text-gray-400">Awaiting events...</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-sm border brand-color-border">
+                <h3 class="text-lg font-semibold mb-4 brand-color-text">Fraudulent Activity Log</h3>
+                <div class="log-panel overflow-y-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">Session ID</th>
+                                <th scope="col" class="px-4 py-3">Score</th>
+                                <th scope="col" class="px-4 py-3">Reasons</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fraud-log">
+                           <tr class="text-center"><td colspan="3" class="pt-8 text-gray-400">No fraudulent activity detected.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // --- STATE MANAGEMENT & INITIALIZATION ---
+        const state = {
+            totalEvents: 0,
+            flaggedSessionIds: new Set(),
+            totalFraudScore: 0,
+            events: [],
+            sessionEvents: new Map(),
+        };
+
+        const ui = {
+            totalEventsEl: document.getElementById('total-events'),
+            sessionsFlaggedEl: document.getElementById('sessions-flagged'),
+            avgFraudScoreEl: document.getElementById('avg-fraud-score'),
+            eventsPerSecondEl: document.getElementById('events-per-second'),
+            liveFeedEl: document.getElementById('live-feed'),
+            fraudLogEl: document.getElementById('fraud-log'),
+            eventsChart: null
+        };
+        
+        let eventIntervalCounter = 0;
+        setInterval(() => {
+            ui.eventsPerSecondEl.textContent = eventIntervalCounter;
+            eventIntervalCounter = 0;
+        }, 1000);
+
+        // --- CHART.JS INITIALIZATION ---
+        function initializeChart() {
+            const ctx = document.getElementById('eventsChart').getContext('2d');
+            ui.eventsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Total Events',
+                        data: [],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                    }, {
+                        label: 'Flagged Events',
+                        data: [],
+                        borderColor: 'rgb(229, 62, 62)',
+                        backgroundColor: 'rgba(229, 62, 62, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            ticks: {
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                    }
+                }
+            });
+        }
+        
+        // --- UI UPDATE FUNCTIONS ---
+        function updateMetrics() {
+            ui.totalEventsEl.textContent = state.totalEvents;
+            ui.sessionsFlaggedEl.textContent = state.flaggedSessionIds.size;
+            const avgScore = state.totalEvents > 0 ? (state.totalFraudScore / state.totalEvents).toFixed(1) : '0.0';
+            ui.avgFraudScoreEl.textContent = avgScore;
+        }
+
+        function addEventToFeed(event, result) {
+            if (state.totalEvents === 1) ui.liveFeedEl.innerHTML = '';
+            const isFlagged = result.flagged;
+            const colorClass = isFlagged ? 'text-red-400' : 'text-green-400';
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span class="${colorClass}">[${event.timestamp.toLocaleTimeString()}]</span> <span class="text-blue-300">${event.eventType}</span> <span class="text-gray-400">SID: ${event.sessionId.substring(0, 8)} | IP: ${event.ipAddress} | Score: ${result.fraudScore}</span>`;
+            ui.liveFeedEl.prepend(logEntry);
+        }
+
+        function addResultToFraudLog(result) {
+             if (state.flaggedSessionIds.size === 1) ui.fraudLogEl.innerHTML = '';
+             const row = document.createElement('tr');
+             row.className = 'bg-white border-b hover:bg-red-50';
+             row.innerHTML = `
+                <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">${result.sessionId.substring(0, 8)}...</td>
+                <td class="px-4 py-3"><span class="bg-red-200 text-red-800 font-bold py-1 px-2 rounded">${result.fraudScore}</span></td>
+                <td class="px-4 py-3">${result.reasons.join(', ')}</td>
+             `;
+             ui.fraudLogEl.prepend(row);
+        }
+
+        let chartUpdateCounter = 0;
+        let totalEventsBucket = 0;
+        let flaggedEventsBucket = 0;
+        function updateChart(isFlagged) {
+            totalEventsBucket++;
+            if(isFlagged) flaggedEventsBucket++;
+
+            chartUpdateCounter++;
+            if(chartUpdateCounter >= 5 || state.totalEvents <= 5){
+                const now = new Date();
+                const label = `${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+                
+                ui.eventsChart.data.labels.push(label);
+                ui.eventsChart.data.datasets[0].data.push(totalEventsBucket);
+                ui.eventsChart.data.datasets[1].data.push(flaggedEventsBucket);
+                
+                if (ui.eventsChart.data.labels.length > 20) {
+                    ui.eventsChart.data.labels.shift();
+                    ui.eventsChart.data.datasets.forEach(dataset => dataset.data.shift());
+                }
+                
+                ui.eventsChart.update();
+                chartUpdateCounter = 0;
+                totalEventsBucket = 0;
+                flaggedEventsBucket = 0;
+            }
+        }
+
+
+        // --- SIMULATED BACKEND (RULES ENGINE) ---
+        function processEvent(event) {
+            if (!state.sessionEvents.has(event.sessionId)) {
+                state.sessionEvents.set(event.sessionId, []);
+            }
+            state.sessionEvents.get(event.sessionId).push(event);
+
+            let score = 0;
+            const reasons = [];
+            const IP_BLACKLIST = ["1.1.1.1", "2.2.2.2"];
+
+            if (IP_BLACKLIST.includes(event.ipAddress)) {
+                score += 50;
+                reasons.push("Blacklisted IP");
+            }
+            
+            if (event.eventType === 'FORM_SUBMISSION' && event.metadata.pageLoadTimestamp) {
+                const loadTime = new Date(event.metadata.pageLoadTimestamp);
+                const diff = event.timestamp.getTime() - loadTime.getTime();
+                if (diff < 1000) {
+                    score += 40;
+                    reasons.push(`Fast Submission (${diff}ms)`);
+                }
+            }
+            
+            const sessionHistory = state.sessionEvents.get(event.sessionId);
+            const fiveSecondsAgo = event.timestamp.getTime() - 5000;
+            const recentEventsCount = sessionHistory.filter(e => e.timestamp.getTime() > fiveSecondsAgo).length;
+            if (recentEventsCount > 10) {
+                score += 25;
+                reasons.push(`High Frequency (${recentEventsCount} events/5s)`);
+            }
+            
+            const flagged = score > 60;
+            return {
+                sessionId: event.sessionId,
+                fraudScore: score,
+                flagged: flagged,
+                reasons: reasons.length > 0 ? reasons : ["No issues"],
+                checkTimestamp: new Date()
+            };
+        }
+
+
+        // --- EVENT SIMULATION ---
+        function createEvent(type) {
+            const sessionIds = ["abc-123", "def-456", "ghi-789", "jkl-012"];
+            const ips = ["101.102.103.104", "201.202.203.204", "1.1.1.1"];
+            const randomSession = sessionIds[Math.floor(Math.random() * sessionIds.length)];
+            const now = new Date();
+            
+            const baseEvent = {
+                sessionId: randomSession,
+                userId: `user-${Math.floor(Math.random() * 100)}`,
+                timestamp: now,
+                ipAddress: ips[Math.floor(Math.random() * ips.length)],
+                metadata: {}
+            };
+
+            switch (type) {
+                case 'FAST_SUBMISSION':
+                    return {
+                        ...baseEvent,
+                        eventType: 'FORM_SUBMISSION',
+                        metadata: { pageLoadTimestamp: new Date(now.getTime() - 500).toISOString() }
+                    };
+                case 'BLACKLISTED_IP':
+                    return { ...baseEvent, ipAddress: '1.1.1.1', eventType: 'CLICK' };
+                case 'HIGH_FREQUENCY':
+                     return { ...baseEvent, eventType: 'CLICK' };
+                default:
+                    return { ...baseEvent, eventType: 'PAGE_LOAD' };
+            }
+        }
+        
+        function simulateEvent(type) {
+            if(type === 'HIGH_FREQUENCY') {
+                for(let i=0; i<12; i++){
+                     setTimeout(() => handleNewEvent(createEvent(type)), i*100);
+                }
+            } else {
+                 handleNewEvent(createEvent(type));
+            }
+        }
+
+        function handleNewEvent(event) {
+            state.totalEvents++;
+            eventIntervalCounter++;
+            
+            const result = processEvent(event);
+            state.totalFraudScore += result.fraudScore;
+
+            if (result.flagged && !state.flaggedSessionIds.has(result.sessionId)) {
+                state.flaggedSessionIds.add(result.sessionId);
+                addResultToFraudLog(result);
+            }
+
+            updateMetrics();
+            addEventToFeed(event, result);
+            updateChart(result.flagged);
+        }
+
+        // --- ONLOAD INITIALIZATION ---
+        window.onload = () => {
+            initializeChart();
+        };
+    </script>
+</body>
+</html>
