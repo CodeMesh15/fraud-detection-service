@@ -1,0 +1,14 @@
+# This is the new, essential line
+run = "cd backend && cargo run --release"
+
+# The rest of your original file
+modules = ["web", "rust-stable"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+
+[[ports]]
+localPort = 8080
+externalPort = 80
